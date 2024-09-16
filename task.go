@@ -11,7 +11,7 @@ type Params struct {
 }
 
 func startTask(taskId string, params Params, quit chan bool) {
-	message := params.Message
+	message := "My current version is 0.0.2"
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
 
