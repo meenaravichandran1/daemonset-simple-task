@@ -7,6 +7,6 @@ This daemon set plugin prints messages to an `output.txt` file in the current di
 Sample data:
 ```
         "data": {
-            "message": "I am running!"
+            "message": "I am running!!!"
         }
 ```
