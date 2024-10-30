@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/meenaravichandran1/runner-logger/logger"
 	"io"
 	"net/http"
 	"sync"
@@ -16,6 +17,7 @@ type Handler struct {
 }
 
 func (h *Handler) HandleTasks(w http.ResponseWriter, r *http.Request) {
+	logger.Info("Handling tasks in daemonset-simple-task handler")
 	switch r.Method {
 	case http.MethodPost:
 		h.Assign(w, r)

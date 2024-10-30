@@ -11,7 +11,7 @@ type Params struct {
 }
 
 func startTask(taskId string, params Params, quit chan bool) {
-	message := params.Message
+	message := "Current daemonset is daemon-simple-task...!!!"
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
 
