@@ -1,23 +1,23 @@
 package main
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/meenaravichandran1/runner-logger/logger"
+	"github.com/harness/runner/logger/gcplogger"
+	"github.com/sirupsen/logrus"
 	"io"
 	"net/http"
 	"sync"
 )
 
 type Handler struct {
-	port  string
-	tasks map[string]chan bool
-	lock  sync.Mutex
+	port         string
+	tasks        map[string]chan bool
+	lock         sync.Mutex
+	remoteLogger *gcplogger.GCPLogger
 }
 
 func (h *Handler) HandleTasks(w http.ResponseWriter, r *http.Request) {
-	logger.Info("Handling tasks in daemonset-simple-task handler")
 	switch r.Method {
 	case http.MethodPost:
 		h.Assign(w, r)
@@ -38,13 +38,8 @@ func (h *Handler) Assign(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for _, task := range tasks.Tasks {
-		var params Params
-		if err := parseParams(&task.EncodedParams, &params); err != nil {
-			sendErrorResponse(w, http.StatusBadRequest, err.Error())
-			return
-		}
 		quit := make(chan bool)
-		go startTask(task.ID, params, quit)
+		go startTask(task.ID, quit)
 
 		h.lock.Lock()
 		h.tasks[task.ID] = quit
@@ -55,6 +50,7 @@ func (h *Handler) Assign(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) Remove(w http.ResponseWriter, r *http.Request) {
+	logrus.Println("Removing daemon tasks...")
 	taskIds, ok := r.URL.Query()["taskIds"]
 	if !ok || len(taskIds) < 1 {
 		sendErrorResponse(w, http.StatusBadRequest, "task IDs are required")
@@ -72,7 +68,11 @@ func (h *Handler) Remove(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-
+	_, err := h.remoteLogger.StopGcpLogger()
+	if err != nil {
+		sendSuccessResponse(w, Response{TasksMetadata: h.getTasksMetadata(), Error: fmt.Sprintf("Cannot close remote logger, err: %v", err.Error())})
+		return
+	}
 	h.lock.Unlock()
 
 	sendSuccessResponse(w, Response{TasksMetadata: h.getTasksMetadata()})
@@ -102,21 +102,6 @@ func parseRequest(r *http.Request, v interface{}) error {
 
 	if err := json.Unmarshal(body, v); err != nil {
 		return fmt.Errorf("invalid payload")
-	}
-	return nil
-}
-
-func parseParams(e *EncodedParams, p *Params) error {
-	// decode base64 data
-	decoded := make([]byte, base64.StdEncoding.DecodedLen(len(e.Base64Data)))
-	n, err := base64.StdEncoding.Decode(decoded, e.Base64Data)
-	if err != nil {
-		return fmt.Errorf("failed to decode EncodedParams.Base64Data with base64: %w", err)
-	}
-	decoded = decoded[:n]
-	// unmarshall decoded data into `Params` type
-	if err := json.Unmarshal(decoded, p); err != nil {
-		return fmt.Errorf("decoded value of EncodedParams.Base64Data is not valid Params type: %w", err)
 	}
 	return nil
 }

@@ -1,17 +1,12 @@
 package main
 
 import (
-	"fmt"
-	"os"
+	"github.com/sirupsen/logrus"
 	"time"
 )
 
-type Params struct {
-	Message string `json:"message"`
-}
-
-func startTask(taskId string, params Params, quit chan bool) {
-	message := "Current daemonset is daemon-simple-task...!!!"
+func startTask(taskId string, quit chan bool) {
+	message := "Current daemon set is daemon-simple-task...!!!"
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
 
@@ -20,20 +15,7 @@ func startTask(taskId string, params Params, quit chan bool) {
 		case <-quit:
 			return
 		case <-ticker.C:
-			writeToFile(fmt.Sprintf("%v [taskId=%s]", message, taskId))
+			logrus.WithFields(logrus.Fields{"taskId": taskId}).Info(message)
 		}
-	}
-}
-
-func writeToFile(message string) {
-	file, err := os.OpenFile("output.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		fmt.Printf("Error opening or creating the file: %v\n", err)
-		return
-	}
-	defer file.Close()
-
-	if _, err := file.WriteString(message + "\n"); err != nil {
-		fmt.Printf("Error writing to the file: %v\n", err)
 	}
 }

@@ -2,13 +2,10 @@ module daemon-set-example.com
 
 go 1.22.5
 
-replace github.com/meenaravichandran1/runner-logger => /Users/kiruthikameenaravichandran/Gitops/runner-logger
-
 replace github.com/harness/runner => /Users/kiruthikameenaravichandran/Gitops/runner
 
 require (
 	github.com/harness/runner v0.0.0-00010101000000-000000000000
-	github.com/meenaravichandran1/runner-logger v0.0.0-20241030005722-1baf6c7b10e6
 )
 
 require (
