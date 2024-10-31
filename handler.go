@@ -68,10 +68,11 @@ func (h *Handler) Remove(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	_, err := h.remoteLogger.StopGcpLogger()
-	if err != nil {
-		sendSuccessResponse(w, Response{TasksMetadata: h.getTasksMetadata(), Error: fmt.Sprintf("Cannot close remote logger, err: %v", err.Error())})
-		return
+	if h.remoteLogger != nil {
+		_, err := h.remoteLogger.StopGcpLogger()
+		if err != nil {
+			logrus.WithError(err).Error("Cannot close remote logger")
+		}
 	}
 	h.lock.Unlock()
 

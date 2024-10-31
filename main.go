@@ -7,6 +7,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"net/http"
 	"os"
+	"strconv"
 )
 
 type Server struct {
@@ -33,17 +34,18 @@ func (s *Server) StartServer(port string) {
 }
 
 func main() {
-	// TODO set it from env var
-	managerClient := client.NewManagerClient("https://qa.harness.io", "px7xd_BFRCi-pfWPYXVjvw", "token",
-		true, "")
 
-	// TODO if remote logging is enabled in env var, set the bool from env var
-	remoteLogger := gcplogger.NewGCPLogger(logrus.StandardLogger(), managerClient)
+	logrus.SetReportCaller(true)
+	logrus.SetFormatter(&logrus.JSONFormatter{})
 
-	// TODO set the bool from env var
-	_, err := remoteLogger.StartGcpLogger(context.TODO())
+	isRemoteLoggingEnabled, err := strconv.ParseBool(os.Getenv("ENABLE_REMOTE_LOGGING"))
 	if err != nil {
-		return
+		isRemoteLoggingEnabled = false
+	}
+
+	var remoteLogger *gcplogger.GCPLogger
+	if isRemoteLoggingEnabled {
+		remoteLogger = startRemoteLogger()
 	}
 
 	logrus.Infoln("Starting daemonset-simple-task...")
@@ -56,4 +58,38 @@ func main() {
 	handler := &Handler{port: port, tasks: make(map[string]chan bool), remoteLogger: remoteLogger}
 	server := NewServer(handler)
 	server.StartServer(":" + port)
+}
+
+func startRemoteLogger() *gcplogger.GCPLogger {
+	managerEndpoint := os.Getenv("MANAGER_HOST_AND_PORT")
+	if managerEndpoint == "" {
+		logrus.Println("Environment variable MANAGER_HOST_AND_PORT is not set. Cannot publish logs to remote")
+		return nil
+	}
+	delegateToken := os.Getenv("DELEGATE_TOKEN")
+	if delegateToken == "" {
+		logrus.Println("Environment variable DELEGATE_TOKEN is not set. Cannot publish logs to remote")
+		return nil
+	}
+	accountId := os.Getenv("ACCOUNT_ID")
+	if accountId == "" {
+		logrus.Println("Environment variable ACCOUNT_ID is not set. Cannot publish logs to remote")
+		return nil
+	}
+	insecure, err := strconv.ParseBool(os.Getenv("SERVER_INSECURE"))
+	if err != nil {
+		insecure = true
+	}
+
+	managerClient := client.NewManagerClient(managerEndpoint, accountId, delegateToken,
+		insecure, "")
+
+	remoteLogger := gcplogger.NewGCPLogger(logrus.StandardLogger(), managerClient)
+
+	_, err = remoteLogger.StartGcpLogger(context.TODO())
+	if err != nil {
+		return nil
+	}
+	logrus.Infoln("Publishing daemon set logs to remote")
+	return remoteLogger
 }
