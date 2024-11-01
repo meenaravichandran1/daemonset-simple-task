@@ -69,7 +69,7 @@ func (h *Handler) Remove(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if h.remoteLogger != nil {
-		_, err := h.remoteLogger.StopGcpLogger()
+		err := h.remoteLogger.Stop()
 		if err != nil {
 			logrus.WithError(err).Error("Cannot close remote logger")
 		}

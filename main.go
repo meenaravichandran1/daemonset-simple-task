@@ -87,7 +87,7 @@ func startRemoteLogger() *gcplogger.GCPLogger {
 	additionalFields := map[string]string{"service": "daemonset-simple-task"}
 	remoteLogger := gcplogger.NewGCPLogger(logrus.StandardLogger(), additionalFields, managerClient)
 
-	_, err = remoteLogger.StartGcpLogger(context.TODO())
+	err = remoteLogger.Start(context.Background())
 	if err != nil {
 		return nil
 	}
