@@ -84,7 +84,8 @@ func startRemoteLogger() *gcplogger.GCPLogger {
 	managerClient := client.NewManagerClient(managerEndpoint, accountId, delegateToken,
 		insecure, "")
 
-	remoteLogger := gcplogger.NewGCPLogger(logrus.StandardLogger(), managerClient)
+	additionalFields := map[string]string{"service": "daemonset-simple-task"}
+	remoteLogger := gcplogger.NewGCPLogger(logrus.StandardLogger(), additionalFields, managerClient)
 
 	_, err = remoteLogger.StartGcpLogger(context.TODO())
 	if err != nil {
