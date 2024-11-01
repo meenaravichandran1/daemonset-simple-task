@@ -61,14 +61,14 @@ func main() {
 }
 
 func startRemoteLogger() *gcplogger.GCPLogger {
-	managerEndpoint := os.Getenv("MANAGER_HOST_AND_PORT")
+	managerEndpoint := os.Getenv("DIAL_HOME_URL")
 	if managerEndpoint == "" {
-		logrus.Println("Environment variable MANAGER_HOST_AND_PORT is not set. Cannot publish logs to remote")
+		logrus.Println("Environment variable DIAL_HOME_URL is not set. Cannot publish logs to remote")
 		return nil
 	}
-	delegateToken := os.Getenv("DELEGATE_TOKEN")
+	delegateToken := os.Getenv("DIAL_HOME_TOKEN")
 	if delegateToken == "" {
-		logrus.Println("Environment variable DELEGATE_TOKEN is not set. Cannot publish logs to remote")
+		logrus.Println("Environment variable DIAL_HOME_TOKEN is not set. Cannot publish logs to remote")
 		return nil
 	}
 	accountId := os.Getenv("ACCOUNT_ID")
@@ -76,7 +76,7 @@ func startRemoteLogger() *gcplogger.GCPLogger {
 		logrus.Println("Environment variable ACCOUNT_ID is not set. Cannot publish logs to remote")
 		return nil
 	}
-	insecure, err := strconv.ParseBool(os.Getenv("SERVER_INSECURE"))
+	insecure, err := strconv.ParseBool(os.Getenv("DIAL_HOME_INSECURE"))
 	if err != nil {
 		insecure = true
 	}
