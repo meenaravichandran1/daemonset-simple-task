@@ -3,18 +3,16 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/harness/runner/logger/gcplogger"
-	"github.com/sirupsen/logrus"
+	"github.com/harness/runner/logger"
 	"io"
 	"net/http"
 	"sync"
 )
 
 type Handler struct {
-	port         string
-	tasks        map[string]chan bool
-	lock         sync.Mutex
-	remoteLogger *gcplogger.GCPLogger
+	port  string
+	tasks map[string]chan bool
+	lock  sync.Mutex
 }
 
 func (h *Handler) HandleTasks(w http.ResponseWriter, r *http.Request) {
@@ -50,7 +48,7 @@ func (h *Handler) Assign(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) Remove(w http.ResponseWriter, r *http.Request) {
-	logrus.Println("Removing daemon tasks...")
+	logger.Println("Removing daemon tasks...")
 	taskIds, ok := r.URL.Query()["taskIds"]
 	if !ok || len(taskIds) < 1 {
 		sendErrorResponse(w, http.StatusBadRequest, "task IDs are required")
@@ -68,11 +66,9 @@ func (h *Handler) Remove(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	if h.remoteLogger != nil {
-		err := h.remoteLogger.Stop()
-		if err != nil {
-			logrus.WithError(err).Error("Cannot close remote logger")
-		}
+	err := logger.CloseHooks()
+	if err != nil {
+		logger.WithError(err).Warn("Cannot close remote logger")
 	}
 	h.lock.Unlock()
 

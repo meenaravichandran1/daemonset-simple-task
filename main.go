@@ -2,13 +2,15 @@ package main
 
 import (
 	"context"
-	"github.com/harness/runner/delegateshell/client"
-	"github.com/harness/runner/logger/gcplogger"
+	"github.com/harness/runner/logger"
+	"github.com/harness/runner/logger/remotelogger"
 	"github.com/sirupsen/logrus"
 	"net/http"
 	"os"
 	"strconv"
 )
+
+const serviceName = "daemonset"
 
 type Server struct {
 	handler *Handler
@@ -27,70 +29,61 @@ func (s *Server) StartServer(port string) {
 		Handler: mux,
 	}
 
-	logrus.Printf("Daemon server is running on port %s\n", port)
+	logger.Printf("Daemon server is running on port %s\n", port)
 	if err := httpServer.ListenAndServe(); err != http.ErrServerClosed {
-		logrus.Printf("Error starting server: %v\n", err)
+		logger.Printf("Error starting server: %v\n", err)
 	}
 }
 
 func main() {
 
-	logrus.SetReportCaller(true)
-	logrus.SetFormatter(&logrus.JSONFormatter{})
+	logger.SetReportCaller(true)
+	logger.SetFormatter(&logrus.JSONFormatter{})
 
 	isRemoteLoggingEnabled, err := strconv.ParseBool(os.Getenv("ENABLE_REMOTE_LOGGING"))
 	if err != nil {
 		isRemoteLoggingEnabled = false
 	}
 
-	var remoteLogger *gcplogger.GCPLogger
 	if isRemoteLoggingEnabled {
-		remoteLogger = startRemoteLogger()
+		startRemoteLogger()
 	}
 
-	logrus.Infoln("Starting daemonset-simple-task...")
+	logger.Infoln("Starting daemonset-simple-task...")
 	port := os.Getenv("DAEMON_SERVER_PORT")
 	if port == "" {
-		logrus.Printf("Environment variable DAEMON_SERVER_PORT is not set. Cannot start server\n")
+		logger.Printf("Environment variable DAEMON_SERVER_PORT is not set. Cannot start server\n")
 		return
 	}
 
-	handler := &Handler{port: port, tasks: make(map[string]chan bool), remoteLogger: remoteLogger}
+	handler := &Handler{port: port, tasks: make(map[string]chan bool)}
 	server := NewServer(handler)
 	server.StartServer(":" + port)
 }
 
-func startRemoteLogger() *gcplogger.GCPLogger {
+func startRemoteLogger() {
 	managerEndpoint := os.Getenv("DIAL_HOME_URL")
 	if managerEndpoint == "" {
-		logrus.Println("Environment variable DIAL_HOME_URL is not set. Cannot publish logs to remote")
-		return nil
+		logger.Println("Environment variable DIAL_HOME_URL is not set. Cannot publish logs to remote")
+		return
 	}
-	delegateToken := os.Getenv("DIAL_HOME_TOKEN")
-	if delegateToken == "" {
-		logrus.Println("Environment variable DIAL_HOME_TOKEN is not set. Cannot publish logs to remote")
-		return nil
+	runnerToken := os.Getenv("DIAL_HOME_TOKEN")
+	if runnerToken == "" {
+		logger.Println("Environment variable DIAL_HOME_TOKEN is not set. Cannot publish logs to remote")
+		return
 	}
 	accountId := os.Getenv("ACCOUNT_ID")
 	if accountId == "" {
-		logrus.Println("Environment variable ACCOUNT_ID is not set. Cannot publish logs to remote")
-		return nil
+		logger.Println("Environment variable ACCOUNT_ID is not set. Cannot publish logs to remote")
+		return
 	}
 	insecure, err := strconv.ParseBool(os.Getenv("DIAL_HOME_INSECURE"))
 	if err != nil {
 		insecure = true
 	}
 
-	managerClient := client.NewManagerClient(managerEndpoint, accountId, delegateToken,
-		insecure, "")
-
-	additionalFields := map[string]string{"service": "daemonset-simple-task"}
-	remoteLogger := gcplogger.NewGCPLogger(logrus.StandardLogger(), additionalFields, managerClient)
-
-	err = remoteLogger.Start(context.Background())
-	if err != nil {
-		return nil
-	}
-	logrus.Infoln("Publishing daemon set logs to remote")
-	return remoteLogger
+	remotelogger.Start(context.Background(), accountId, managerEndpoint, runnerToken, serviceName, "daemonset-simple-task", true, insecure)
+	logger.Infoln("Publishing daemon set logs to remote")
+	logger.UpdateContextInHooks(map[string]string{"service": serviceName})
+	return
 }

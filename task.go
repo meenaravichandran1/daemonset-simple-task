@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/sirupsen/logrus"
+	"github.com/harness/runner/logger"
 	"time"
 )
 
@@ -15,7 +15,7 @@ func startTask(taskId string, quit chan bool) {
 		case <-quit:
 			return
 		case <-ticker.C:
-			logrus.WithFields(logrus.Fields{"taskId": taskId}).Info(message)
+			logger.WithFields(map[string]interface{}{"taskId": taskId}).Info(message)
 		}
 	}
 }
